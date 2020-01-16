@@ -1,0 +1,176 @@
+select database() 查看当前所在库
+整数类型(精确值) - integer,int,smallint,tinyint,mediumint,bigint
+浮点类型(近似值) - float,double,decimal(m,n)
+unsigned  	 无符号
+blob和text类型
+enum用来存储给出的一个值
+set用来存储给出的值中一个或多个值
+
+default	   	 默认值
+auto_increment	 自增列
+primary key	 主键
+modify		修改字段数据类型
+change		修改字段名
+rename		表重命名
+curdate() 	返回当前日期
+curtime()  	返回当前时间
+interval	设置时间计算
+regexp		正则查询
+union		连接两个以上的 select 语句
+group by	聚合分组
+having		聚合筛选
+distinct	去重语句
+MUL		普通索引
+UNI		唯一索引
+PRI		主键索引
+create [unique] index 索引名 on 表名(字段名)  在已有表中创建索引
+查看索引:
+	desc 表名--> KEY标志为:MUL 、UNI。
+	show index from 表名
+扩展: 借助性能查看选项去查看索引性能
+	show variables like 'profiling';
+	set profiling = 1;   打开功能 (项目上线一般不打开)
+	show profiles     查看语句执行信息
+drop index 索引名 on 表名;  删除索引
+已有表添加主键索引或自增长属性:
+	alter table 表名 add primary key(id);
+	alter table 表名 modify id int auto_increment
+删除主键索引或自增长属性:
+	alter table 表名 modify id int;要先删除自增长,因为它只作用于主键字段
+	alter table 表名 drop primary key;
+constraint	添加外键名
+alter table person add constraint dept_fk foreign key(dept_id) references dept(id)
+		建立表后增加外键
+alter table person drop foreign key dept_fk	通过外键名称解除外键约束
+restrict(默认) : on delete restrict on update restrict
+cascade :数据级联更新 on delete cascade on update cascade
+set null : on delete set null on update set null
+inner join [on]	内连接
+create [or replace] view c1 as select name,age from class_1  创建视图
+or replace   存在就替换
+show full tables in stu where table_type like 'VIEW';查看所有视图
+drop view [IF EXISTS] 视图名;删除视图
+alter view c1 as select name,age,score from class_1;修改视图
+函数创建:
+create function 函数名(形参列表) returns 返回类型  --注意是retruns
+begin
+	函数体	-- 函数语句集,set @a 定义变量
+	return val
+end自定义符号
+		delimiter $$
+		create function queryNameById(uid int(10))
+		returns varchar(20)
+		begin
+		return (select name from class_1 where id=uid);
+		end $$
+		delimiter ;
+		select queryNameById(1);
+
+
+存储过程创建:
+create procedure 存储过程名(形参列表)
+begin
+	存储过程  -- 存储过程语句集,set @a 定义变量
+end自定义符号
+		delimiter $$
+		create procedure st()
+		begin
+		select name,age from class_1;
+		select name,score from class_1 order by score desc;
+		end $$
+		delimiter ;
+		call st();
+
+	show {procedure|function} status [like’存储过程或存储函数的名称’]  
+使用show status语句查看存储过程和函数的信息,显示内容:数据库、名字、类型、创建者、创建和修改日期
+	show create {procedure|function} 存储过程或存储函数的名称
+使用show create语句查看存储过程和函数的定义
+	select name from mysql.proc where db='stu' and type='[procedure/function]';
+查看所有函数或者存储过程
+	drop {procedure | function} [if exists] sp_name
+删除存储过程或存储函数
+
+事务四大特性:atomicity,consistency,isolation,durability
+事务隔离级别:read uncommitted,read committed,repeatable read,serializable
+begin
+commit
+rollback
+
+1、查看所有存储引擎
+mysql> show engines;
+2、查看已有表的存储引擎
+mysql> show create table 表名;
+3、创建表指定
+create table 表名(...)engine=MyISAM,charset=utf8,auto_increment=10000;
+4、已有表指定
+alter table 表名 engine=InnoDB;
+
+1、执行查操作多的表用 MyISAM(使用InnoDB浪费资源)
+2、执行写操作多的表用 InnoDB
+
+create table 表名 select 查询命令;  表的复制
+mysqldump -u用户名 -p 源库名 > /stu.sql  备份命令格式
+mysql -uroot -p 目标库名 < stu.sql	恢复命令格式
+
+开启MySQL远程连接:
+    1.终端修改配置文件
+	cd /etc/mysql/mysql.conf.d
+	vi mysqld.cnf #找到44行左右,加 # 注释 #bind-address = 127.0.0.1
+	service mysql restart	重启数据库
+
+    2.修改用户表host值
+	use mysql;
+	update user set host='%' where user='root';
+	flush privileges;刷新权限
+
+添加授权用户
+    1. 用root用户登录mysql
+	mysql -uroot -p123456
+    2. 添加用户 % 表示自动选择可用IP
+	CREATE USER 'username'@'host' IDENTIFIED BY 'password';
+    3. 授权
+	grant 权限列表 on 库.表 to "用户名"@"%" identified by "密码" with grant option;
+	revoke insert,update,select on 库.表 from 'user'@'%';
+	权限列表:all privileges 、select 、insert ,update,delete,alter等。
+	库.表 : *.* 代表所有库的所有表
+    4. 刷新权限 
+	flush privileges;
+    5. 删除用户
+	delete from mysql.user where user='username';
+	drop user "用户名"@"%"
+1. 创建用户
+    mysql>create user 'work'@'%' identified by '123';
+2. 添加授权用户work,密码123,对所有库的所有表有所有权限
+    mysql>grant all privileges on *.* to 'work'@'%' identified by '123' with grant option;
+    mysql>flush privileges;
+3. 添加用户duty,密码123,对db2库中所有表有所有权限
+mysql>grant all privileges on books.* to 'duty'@'%' identified by '123' with grant option;
+mysql>flush privileges;
+
+pymysql使用流程:
+
+db = pymysql.connect(参数列表)
+	host :主机地址,本地 localhost
+	port :端口号,默认3306
+	user :用户名
+	password :密码
+	database :库
+	charset :编码方式,推荐使用 utf8
+
+cur = db.cursor() 返回游标对象,用于执行具体SQL命令
+db.commit() 提交到数据库执行
+db.rollback() 回滚,用于当commit()出错是回复到原来的数据形态
+db.close() 关闭连接
+
+cur.execute(sql命令,[列表]) 执行SQL命令
+cur.executemany(sql命令,[data]) 根据数据列表项多次执行SQL命令,一般用于写操作。
+cur.fetchone() 获取查询结果集的第一条数据,查找到返回一个元组否则返回None
+cur.fetchmany(n) 获取前n条查找到的记录,返回结果为元组嵌套元组, ((记录1),(记录2))。
+cur.fetchall() 获取所有查找到的记录,返回结果形式同上。
+cur.close() 关闭游标对象
+	
+
+
+
+
+
